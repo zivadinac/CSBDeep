@@ -39,6 +39,8 @@ class EnsembleDisagreement():
             return_entropies: if True also return values of mixture entropy and Laplace entropies. Default value is False
             mixture_k: number std intervals used when approximating mixture entropy. Default value is MIXTURE_K_DEFAULT
             mixture_precision: precision for numerical integration when approximating mixture entropy. Default value is MIXTURE_PRECISION_DEFAULT
+        Returns:
+                Disagreement matrix or tuple of disagreement, and entropies (depending on `return_entropies`).
         """
         #mixture_precision: precision for numerical integration when approximating mixture entropy. This influences number of points in the quadratic formula and computation time. Default value is MIXTURE_PRECISION_DEFAULT
         assert len(img_predictions) == len(self.__img_placeholders)
@@ -175,6 +177,8 @@ class EnsembleDisagreement3D(EnsembleDisagreement):
             img_predictions: list of Laplace distribution params for each image. Must be of same length as specified when constructing this object (`ensemble_len`). Shape of each item must be (ZxHxWx2) where Z, H and W are same as in `img_size` constructor param.
 
             Keyword args are same as in EnsembleDisagreement.eval().
+        Returns:
+            Disagreement matrix or tuple of disagreement, and entropies (depending on `return_entropies`).
         """
         super_eval = super(EnsembleDisagreement3D, self).eval
         return_entropies = kwargs["return_entropies"]
@@ -206,6 +210,8 @@ def get_ensemble_disagreement(ndim, *args, **kwargs):
         ndim: number of dimensions of input images (2 or 3)
         args: same as in EnsembleDisagreement and EnsembleDisagreement3D
         kwargs: same as in EnsembleDisagreement and EnsembleDisagreement3D
+    Returns:
+        Ensemble disagreement object (for 2D or 3D images).
     """
     if ndim not in [2,3]:
         raise ValueError(f"Images of dimension {ndim} are not suppored (ndim should be 2 or 3).")
@@ -219,11 +225,11 @@ def tiled_disagreement(disagreement, tile_size, perc_thr, occ_thr):
             tile_size - size of resulting tiles in (z, x, y) (or (x,y)) format
             perc_thr - percentile threshold for disagreement (per z stack)
             occ_thr - occupancy threshold for tiles (float from [0,1], if number of pixels with disagreement higher than 'perc_thr' is above 'occ_thr' tile is marked as unrealiable
+        Returns:
+            List of unreliable tiles each represented with two points: top left in first z-plane and bottom right in last z-plane.
     """
     d_size = disagreement.shape
     z = np.arange(0, d_size[0], tile_size[0])
-    #x = np.arange(0, d_size[1], int(tile_size[1] / 2))
-    #y = np.arange(0, d_size[2], int(tile_size[2] / 2))
     x = np.arange(0, d_size[1], tile_size[1])
     y = np.arange(0, d_size[2], tile_size[2])
 
@@ -232,13 +238,15 @@ def tiled_disagreement(disagreement, tile_size, perc_thr, occ_thr):
     window_thr_disagreement = disagreement > z_stack_percs
     #window_thr_disagreement = disagreement > np.percentile(disagreement, perc_thr)
 
+    tiles = []
+
     for zs in z:
         for xs in x:
             for ys in y:
                 window = window_thr_disagreement[zs:zs+tile_size[0], xs:xs+tile_size[1], ys:ys+tile_size[2]]
-                window_thr_disagreement[zs:zs+tile_size[0], xs:xs+tile_size[1], ys:ys+tile_size[2]] = np.sum(window) / np.prod(window.shape) > occ_thr
-                #window_thr_disagreement[zs:zs+tile_size[0], xs:xs+tile_size[1], ys:ys+tile_size[2]] = np.any(window)
+                if np.sum(window) / np.prod(window.shape) > occ_thr:
+                    window_thr_disagreement[zs:zs+tile_size[0], xs:xs+tile_size[1], ys:ys+tile_size[2]] = 1
+                    tiles.append(((zs, xs, ys), (zs+tile_size[0], xs+tile_size[1], ys+tile_size[2])))
 
-
-    return window_thr_disagreement
+    return tiles, window_thr_disagreement
 

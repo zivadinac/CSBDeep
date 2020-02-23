@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from csbdeep.utils import plot_some
 from csbdeep.io import load_training_data, save_tiff_imagej_compatible
 from csbdeep.models import CARE
-from ensemble_disagreement import get_ensemble_disagreement
+from csbdeep.ensemble_disagreement import get_ensemble_disagreement
 from skimage.io import ImageCollection, imread, imsave
 from skimage.exposure import rescale_intensity
 from skimage import img_as_float, img_as_ubyte
